@@ -34,6 +34,13 @@ async function pbAdminLogin() {
 const cache = new Map();
 function putCache(k, v, ttl=300000){ cache.set(k, {v,exp:Date.now()+ttl}); }
 function getCache(k){ const e=cache.get(k); if(!e) return null; if(Date.now()>e.exp){cache.delete(k); return null;} return e.v; }
+async function pbGetAdmin(coll, params = "") {
+  const token = await pbAdminLogin();
+  const url = `${PB_URL}/api/collections/${coll}/records${params ? "?" + params : ""}`;
+  const r = await fetch(url, { headers: { "Authorization": `AdminAuth ${token}` } });
+  if (!r.ok) throw new Error(`PB GET(A) ${coll} ${r.status}`);
+  return r.json();
+}
 
 // -------- PB helpers (public GET; admin GET/POST/PATCH)
 async function pbGet(coll, params = "") {
@@ -70,7 +77,7 @@ async function pbAuthed(method, coll, body, id=null){
 
 // -------- Config & content
 async function configVal(key){
-  const j = await pbGet("config", `perPage=1&filter=${encodeURIComponent(`(key="${key}")`)}`);
+  const j = await pbGetAdmin("config", `perPage=1&filter=${encodeURIComponent(`(key="${key}")`)}`);
   return j.items?.[0]?.value ?? "";
 }
 async function msg(key){
@@ -606,3 +613,4 @@ app.post("/webhook", async (req, res)=>{
 // -------- Start
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, ()=> console.log("BOT running on", PORT));
+
